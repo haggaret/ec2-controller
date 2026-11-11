@@ -24,11 +24,11 @@ Resources:
       Handler: ec2-controller.lambda_handler
       Runtime: python3.13
       Description: Lambda function to control a given EC2 instance
-      MemorySize: 1024
+      MemorySize: 256
       Timeout: 300
       Environment:
         Variables:
-          - INSTANCEID: !If [InstanceIdPresent, !Ref InstanceId, !Ref 'AWS::NoValue']
+          INSTANCEID: !If [InstanceIdPresent, !Ref InstanceId, !Ref 'AWS::NoValue']
       FunctionUrlConfig:
         AuthType: NONE
       Policies:
