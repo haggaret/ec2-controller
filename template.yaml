@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: Lambda function to sync source google calendar(s) to destination calendar
+
+Parameters:
+  LambdaName:
+    Type: String
+    Default: 'ec2-controller'
+    Description: Name for the lambda function
+  InstanceId:
+    Type: String
+    Default: ''
+    Description: Instance ID to control (optional)
+
+Conditions:
+  InstanceIdPresent: !Not [ !Equals [ !Ref InstanceId, '' ] ]
+
+Resources:
+  Ec2Controller:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      FunctionName: !Ref LambdaName
+      CodeUri: src/
+      Handler: ec2-controller.lambda_handler
+      Runtime: python3.13
+      Description: Lambda function to control a given EC2 instance
+      MemorySize: 1024
+      Timeout: 300
+      Environment:
+        Variables:
+          - INSTANCEID: !If [InstanceIdPresent, !Ref InstanceId, !Ref 'AWS::NoValue']
+      FunctionUrlConfig:
+        AuthType: NONE
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            # EC2
+            -
+              Effect: "Allow"
+              Action:
+                - "ec2:StartInstances"
+                - "ec2:DescribeInstances"
+              Resource: !If
+                - InstanceIdPresent
+                - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${InstanceId}'
+                - '*'
+
+Outputs:
+  SamEndpointUrl:
+    Description: "Lambda URL"
+    Value: !GetAtt Ec2ControllerUrl.FunctionUrl
