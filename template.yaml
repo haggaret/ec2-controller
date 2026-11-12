@@ -7,13 +7,13 @@ Parameters:
     Type: String
     Default: 'ec2-controller'
     Description: Name for the lambda function
-  InstanceId:
+  InstanceIds:
     Type: String
     Default: ''
-    Description: Instance ID to control (optional)
+    Description: Comma separated list of Instance IDs to control (optional)
 
 Conditions:
-  InstanceIdPresent: !Not [ !Equals [ !Ref InstanceId, '' ] ]
+  InstanceIdsPresent: !Not [ !Equals [ !Ref InstanceIds, '' ] ]
 
 Resources:
   Ec2Controller:
@@ -28,7 +28,7 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          INSTANCEID: !If [InstanceIdPresent, !Ref InstanceId, !Ref 'AWS::NoValue']
+          INSTANCEIDS: !If [InstanceIdsPresent, !Ref InstanceIds, !Ref 'AWS::NoValue']
       FunctionUrlConfig:
         AuthType: NONE
       Policies:
@@ -40,9 +40,16 @@ Resources:
               Action:
                 - "ec2:StartInstances"
                 - "ec2:DescribeInstances"
+                - "ec2:StopInstances"
               Resource: !If
-                - InstanceIdPresent
-                - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${InstanceId}'
+                - InstanceIdsPresent
+                - !Split
+                  - ","
+                  - !Sub
+                    - "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${JoinedIds}"
+                    - JoinedIds: !Join
+                        - !Sub ",arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/"
+                        - !Split [",", !Ref InstanceIds]
                 - '*'
 
 Outputs:

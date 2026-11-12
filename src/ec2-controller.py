@@ -10,6 +10,7 @@ VALID_ACTIONS = ['start', 'stop', 'status']
 LOG_LEVEL = logging.INFO
 if os.environ.get('DEBUG', False):
     LOG_LEVEL = logging.DEBUG
+LIMIT_TO_INSTANCE_IDS = [i.strip() for i in raw.split(",") if i.strip()] if (raw := os.getenv("INSTANCEID")) else None
 
 # Initialize the root logger and set its level
 logger = logging.getLogger()
@@ -30,6 +31,13 @@ def lambda_handler(event, context):
         return {
             'statusCode': 400,
             'body': json.dumps({'error': 'Missing required query parameter(s)'})
+        }
+
+    if LIMIT_TO_INSTANCE_IDS and instance_id not in LIMIT_TO_INSTANCE_IDS:
+        logger.debug('Given instance ID not in allowed list - abort early')
+        return {
+            'statusCode': 403,
+            'body': json.dumps({'error': 'Not allowed'})
         }
 
     if action.lower() not in VALID_ACTIONS:
