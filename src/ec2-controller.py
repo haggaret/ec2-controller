@@ -52,7 +52,7 @@ def lambda_handler(event, context):
                 # ( pending | running | shutting-down | terminated | stopping | stopped)
                 instance_state = instance.get('State').get('Name')
 
-        statusCode = 200
+        status_code = 200
         match action:
             case 'status':
                 message = f"Instance {instance_id} current state: {instance_state}"
