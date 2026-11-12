@@ -8,12 +8,13 @@ Parameters:
     Default: 'ec2-controller'
     Description: Name for the lambda function
   InstanceIds:
-    Type: String
-    Default: ''
+    Type: CommaDelimitedList
     Description: Comma separated list of Instance IDs to control (optional)
+    Default: ""
 
 Conditions:
-  InstanceIdsPresent: !Not [ !Equals [ !Ref InstanceIds, '' ] ]
+# Join the list into a single string first to check if it is empty
+  InstanceIdsPresent: !Not [!Equals [!Join ["", !Ref InstanceIds], ""]]
 
 Resources:
   Ec2Controller:
@@ -28,18 +29,24 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          INSTANCEIDS: !If [InstanceIdsPresent, !Ref InstanceIds, !Ref 'AWS::NoValue']
+          # Convert the list back into a comma-separated string for Python
+          INSTANCEIDS: !If
+            - InstanceIdsPresent
+            - !Join [",", !Ref InstanceIds]
+            - !Ref "AWS::NoValue"
       FunctionUrlConfig:
         AuthType: NONE
       Policies:
         - Version: "2012-10-17"
           Statement:
-            # EC2
-            -
-              Effect: "Allow"
+            # DescribeInstances can't be restricted to a single EC2 ARN
+            - Effect: Allow
+              Action:
+                - "ec2:DescribeInstances"
+              Resource: "*"
+            - Effect: Allow
               Action:
                 - "ec2:StartInstances"
-                - "ec2:DescribeInstances"
                 - "ec2:StopInstances"
               Resource: !If
                 - InstanceIdsPresent
@@ -48,9 +55,9 @@ Resources:
                   - !Sub
                     - "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${JoinedIds}"
                     - JoinedIds: !Join
-                        - !Sub ",arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/"
-                        - !Split [",", !Ref InstanceIds]
-                - '*'
+                        - ",arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/"
+                        - !Ref InstanceIds
+                - "*"
 
 Outputs:
   SamEndpointUrl:
