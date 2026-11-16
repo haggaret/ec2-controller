@@ -57,6 +57,7 @@ def lambda_handler(event, context):
         instance_status = ec2.describe_instances(InstanceIds=[instance_id])
         logger.debug(f"Instance info: {instance_status}")
 
+        instance_state = 'unknown'
         for reservation in instance_status['Reservations']:
             for instance in reservation['Instances']:
                 # ( pending | running | shutting-down | terminated | stopping | stopped)
@@ -129,11 +130,12 @@ def lambda_handler(event, context):
         # Retrieve the public IP address
         response = ec2.describe_instances(InstanceIds=[instance_id])
         public_ip = None
-        
-        for reservation in response['Reservations']:
-            for instance in reservation['Instances']:
-                public_ip = instance.get('PublicIpAddress')
-                logger.info(f"Found Public IP: {public_ip}")
+
+        if instance_state == 'running':
+            for reservation in response['Reservations']:
+                for instance in reservation['Instances']:
+                    public_ip = instance.get('PublicIpAddress')
+                    logger.info(f"Found Public IP: {public_ip}")
 
         body = {
             'message': message,
