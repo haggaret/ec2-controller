@@ -2,6 +2,7 @@ import boto3
 import json
 import logging
 import os
+import requests
 from botocore.exceptions import WaiterError, ClientError
 
 ec2 = boto3.client('ec2')
@@ -11,6 +12,7 @@ LOG_LEVEL = logging.INFO
 if os.environ.get('DEBUG', False):
     LOG_LEVEL = logging.DEBUG
 LIMIT_TO_INSTANCE_IDS = [i.strip() for i in raw.split(",") if i.strip()] if (raw := os.getenv("INSTANCEID")) else None
+DDNS = os.environ.get('DDNS', False).strip().lower() == "true"
 
 # Initialize the root logger and set its level
 logger = logging.getLogger()
@@ -140,11 +142,30 @@ def lambda_handler(event, context):
         if public_ip:
             body['publicIp'] = public_ip
 
+        if DDNS and action == 'start':
+            ddns_update_success = False
+            ddns_host = os.environ.get('DDNS_HOST')
+            ddns_domain = os.environ.get('DDNS_DOMAIN')
+            ddns_password = os.environ.get('DDNS_PSWD')
+
+            if not ddns_host and not ddns_domain and not ddns_password and not public_ip:
+                logger.error('Unable to update dynamic DNS - missing required info')
+            else:
+                ddns_url = f'https://dynamicdns.park-your-domain.com/update?host={ddns_host}&domain={ddns_domain}&password={ddns_password}&ip={public_ip}'
+                update_dns_response = requests.get(ddns_url)
+                if update_dns_response.status_code == 200:
+                    logger.info(f'Successfully updated {ddns_host}.{ddns_domain} to {public_ip}')
+                    ddns_update_success = True
+                else:
+                    logger.error(f'Failed to update {ddns_host}.{ddns_domain} to {public_ip}')
+            body['ddns_update'] = ddns_update_success
+
         return {
             'statusCode': status_code,
             'headers': {'Content-Type': 'application/json'},
             'body': json.dumps(body)
         }
+
 
     except ClientError as e:
         error_info = e.response.get("Error", {})

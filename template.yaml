@@ -11,10 +11,32 @@ Parameters:
     Type: CommaDelimitedList
     Description: Comma separated list of Instance IDs to control (optional)
     Default: ""
+  DdnsUpdate:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+  ddnsHost:
+    Type: String
+    Default: ''
+    Description: If DdnsUpdate is set to true, hostname for DDNS record
+  ddnsDomain:
+    Type: String
+    Default: ''
+    Description: If DdnsUpdate is set to true, domain name for DDNS record
+  ddnsPassword:
+    Type: String
+    Default: ''
+    Description: If DdnsUpdate is set to true, ddns password
 
 Conditions:
 # Join the list into a single string first to check if it is empty
   InstanceIdsPresent: !Not [!Equals [!Join ["", !Ref InstanceIds], ""]]
+  DdnsEnabled: !Equals [!Ref DdnsUpdate, "true"]
+  DdnsHostPresent: !Not [!Equals [!Ref ddnsHost, ""]]
+  DdnsDomainPresent: !Not [!Equals [!Ref ddnsDomain, ""]]
+  DdnsPasswordPresent: !Not [!Equals [!Ref ddnsPassword, ""]]
 
 Resources:
   Ec2Controller:
@@ -33,6 +55,22 @@ Resources:
           INSTANCEIDS: !If
             - InstanceIdsPresent
             - !Join [",", !Ref InstanceIds]
+            - !Ref "AWS::NoValue"
+          DDNS: !If
+            - DdnsEnabled
+            - true
+            - false
+          DDNS_HOST: !If
+            - DdnsHostPresent
+            - !Ref ddnsHost
+            - !Ref "AWS::NoValue"
+          DDNS_DOMAIN: !If
+            - DdnsDomainPresent
+            - !Ref ddnsDomain
+            - !Ref "AWS::NoValue"
+          DDNS_PSWD: !If
+            - DdnsPasswordPresent
+            - !Ref ddnsPassword
             - !Ref "AWS::NoValue"
       FunctionUrlConfig:
         AuthType: NONE
