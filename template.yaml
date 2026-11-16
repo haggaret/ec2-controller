@@ -28,6 +28,7 @@ Parameters:
   ddnsPassword:
     Type: String
     Default: ''
+    NoEcho: true
     Description: If DdnsUpdate is set to true, ddns password
 
 Conditions:
